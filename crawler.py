@@ -88,7 +88,7 @@ class LeetCodeCrawler:
             if item["status"] == "ac"
         ]
 
-        print(accepted_problems, len(accepted_problems))
+        # print(accepted_problems, len(accepted_problems))
 
         # Process new accepted problems
         for problem_id, slug in accepted_problems:
