@@ -217,74 +217,106 @@ class LeetCodeCrawler:
 
     def fetch_submission(self, slug):
         print(f"🤖 Fetching submission for problem: {slug}")
-        query_params = {
-            "operationName": "Submissions",
-            "variables": {
-                "offset": 0,
-                "limit": 20,
-                "lastKey": "",
-                "questionSlug": slug,
-            },
-            "query": """query Submissions($offset: Int!, $limit: Int!, $lastKey: String, $questionSlug: String!) {
-                                        submissionList(offset: $offset, limit: $limit, lastKey: $lastKey, questionSlug: $questionSlug) {
-                                        lastKey
-                                        hasNext
-                                        submissions {
-                                            id
-                                            statusDisplay
-                                            lang
-                                            runtime
-                                            timestamp
-                                            url
-                                            isPending
+        try:
+            query_params = {
+                "operationName": "Submissions",
+                "variables": {
+                    "offset": 0,
+                    "limit": 20,
+                    "lastKey": "",
+                    "questionSlug": slug,
+                },
+                "query": """query Submissions($offset: Int!, $limit: Int!, $lastKey: String, $questionSlug: String!) {
+                                            submissionList(offset: $offset, limit: $limit, lastKey: $lastKey, questionSlug: $questionSlug) {
+                                            lastKey
+                                            hasNext
+                                            submissions {
+                                                id
+                                                statusDisplay
+                                                lang
+                                                runtime
+                                                timestamp
+                                                url
+                                                isPending
+                                                __typename
+                                            }
                                             __typename
                                         }
-                                        __typename
-                                    }
-                                }""",
-        }
-        resp = self.session.post(
-            "https://leetcode.com/graphql",
-            data=json.dumps(query_params).encode("utf8"),
-            headers={
-                "content-type": "application/json",
-            },
-        )
-        body = json.loads(resp.content)
+                                    }""",
+            }
+            resp = self.session.post(
+                "https://leetcode.com/graphql",
+                data=json.dumps(query_params).encode("utf8"),
+                headers={
+                    "content-type": "application/json",
+                },
+            )
+            body = json.loads(resp.content)
 
-        # parse data
-        submissions = get(body, "data.submissionList.submissions")
-        if len(submissions) > 0:
+            # Add debug print
+            # print(f"Response body: {body}")
+
+            submissions = get(body, "data.submissionList.submissions")
+            if not submissions:
+                print(f"No submissions found for {slug}")
+                return
+
             for sub in submissions:
                 if Submission.get_or_none(Submission.id == sub["id"]) is not None:
                     continue
 
                 if sub["statusDisplay"] == "Accepted":
                     url = sub["url"]
-                    self.browser.get(f"https://leetcode.com{url}")
-                    element = WebDriverWait(self.browser, 10).until(
-                        EC.presence_of_element_located(
-                            (By.ID, "result_date")
-                        )  # "someId"
-                    )
-                    html = self.browser.page_source
-                    pattern = re.compile(
-                        r"submissionCode: \'(?P<code>.*)\',\n  editCodeUrl", re.S
-                    )
-                    matched = pattern.search(html)
-                    code = matched.groupdict().get("code") if matched else None
-                    if code:
-                        Submission.insert(
-                            id=sub["id"],
-                            slug=slug,
-                            language=sub["lang"],
-                            created=sub["timestamp"],
-                            source=code.encode("utf-8"),
-                        ).execute()
-                    else:
-                        raise Exception(
-                            f"Cannot get submission code for problem: {slug}"
+                    full_url = f"https://leetcode.com{url}"
+                    # print(f"Fetching submission from: {full_url}")
+
+                    # Add longer wait time
+                    self.browser.get(full_url)
+                    try:
+                        element = WebDriverWait(
+                            self.browser, 30
+                        ).until(  # Increased timeout to 30 seconds
+                            EC.presence_of_element_located((By.ID, "result_date"))
                         )
+
+                        # Add debug print of page source if element is found
+                        html = self.browser.page_source
+                        # print(f"Found result_date element, page length: {len(html)}")
+
+                        pattern = re.compile(
+                            r"submissionCode: \'(?P<code>.*)\',\n  editCodeUrl", re.S
+                        )
+                        matched = pattern.search(html)
+
+                        if not matched:
+                            print("Could not find submission code pattern in page")
+                            print(
+                                f"Page source: {html[:1000]}..."
+                            )  # Print first 1000 chars
+                            continue
+
+                        code = matched.groupdict().get("code")
+                        if code:
+                            Submission.insert(
+                                id=sub["id"],
+                                slug=slug,
+                                language=sub["lang"],
+                                created=sub["timestamp"],
+                                source=code.encode("utf-8"),
+                            ).execute()
+                            # print(f"Successfully saved submission {sub['id']}")
+                        else:
+                            print(
+                                f"No code found in match groups: {matched.groupdict()}"
+                            )
+
+                    except Exception as e:
+                        print(f"Error processing submission {sub['id']}: {str(e)}")
+                        continue
+
+        except Exception as e:
+            print(f"Error fetching submissions for {slug}: {str(e)}")
+
         random_wait(10, 15)
 
 
