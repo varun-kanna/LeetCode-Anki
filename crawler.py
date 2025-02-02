@@ -255,7 +255,7 @@ class LeetCodeCrawler:
                     element = WebDriverWait(self.browser, 10).until(
                         EC.presence_of_element_located(
                             (By.ID, "result_date")
-                        )  # 用实际等待元素的ID替换"someId"
+                        )  # "someId"
                     )
                     html = self.browser.page_source
                     pattern = re.compile(
