@@ -73,27 +73,35 @@ class LeetCodeCrawler:
         self.session.cookies.update(cookies)
 
     def fetch_accepted_problems(self):
-        response = self.session.get(
-            "https://leetcode.com/api/problems/all/"
-        )  # gets all the problems from leetcode that are accepted by the account
+        # Get all problems
+        response = self.session.get("https://leetcode.com/api/problems/all/")
         all_problems = json.loads(response.content.decode("utf-8"))
-        # filter AC problems
-        counter = 0
-        for item in all_problems["stat_status_pairs"]:
-            if item["status"] == "ac":
-                id, slug = destructure(
-                    item["stat"], "question_id", "question__title_slug"
-                )
-                # only update problem if not exists
-                if Problem.get_or_none(Problem.id == id) is None:
-                    counter += 1
-                    # fetch problem
-                    do(self.fetch_problem, args=[slug, True])
-                    # fetch solution
-                    do(self.fetch_solution, args=[slug])
 
-                # always try to update submission
-                do(self.fetch_submission, args=[slug])
+        # Get existing problem IDs from database
+        existing_problems = {p.id for p in Problem.select(Problem.id)}
+
+        # Filter accepted problems that aren't in database
+        counter = 0
+        accepted_problems = [
+            (item["stat"]["question_id"], item["stat"]["question__title_slug"])
+            for item in all_problems["stat_status_pairs"]
+            if item["status"] == "ac"
+        ]
+
+        print(accepted_problems, len(accepted_problems))
+
+        # Process new accepted problems
+        for problem_id, slug in accepted_problems:
+            if problem_id not in existing_problems:
+                counter += 1
+                # fetch problem
+                do(self.fetch_problem, args=[slug, True])
+                # fetch solution
+                do(self.fetch_solution, args=[slug])
+
+            # always try to update submission
+            do(self.fetch_submission, args=[slug])
+
         print(f"🤖 Updated {counter} problems")
 
     def fetch_problem(self, slug, accepted=False):
