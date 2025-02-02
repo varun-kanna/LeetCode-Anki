@@ -1,11 +1,14 @@
 import random
 import re
-
 from genanki import Model, Deck, Note, Package
 from markdown import markdown
-
 from database import Problem
 from utils import parser as conf
+import warnings
+
+warnings.filterwarnings(
+    "ignore", message="Field contained the following invalid HTML tags"
+)
 
 
 def random_id():

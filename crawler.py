@@ -274,7 +274,7 @@ class LeetCodeCrawler:
                     self.browser.get(full_url)
                     try:
                         #  adjust timeout as needed
-                        element = WebDriverWait(self.browser, 30).until(
+                        element = WebDriverWait(self.browser, 10).until(
                             EC.presence_of_element_located((By.ID, "result_date"))
                         )
 
