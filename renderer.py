@@ -1,7 +1,5 @@
-import html
 import random
 import re
-from typing import Optional
 
 from genanki import Model, Deck, Note, Package
 from markdown import markdown
@@ -14,17 +12,7 @@ def random_id():
     return random.randrange(1 << 30, 1 << 31)
 
 
-def safe_html_escape(content: Optional[str]) -> str:
-    """Safely escape HTML content, handling None values."""
-    if content is None:
-        return ""
-    return html.escape(content)
-
-
 def markdown_to_html(content: str):
-    # First escape any HTML tags in the content
-    content = safe_html_escape(content)
-
     # replace the math symbol "$$x$$" to "\(x\)" to make it compatible with mathjax
     content = re.sub(pattern=r"\$\$(.*?)\$\$", repl=r"\(\1\)", string=content)
 
@@ -33,8 +21,6 @@ def markdown_to_html(content: str):
 
 
 def code_to_html(source, language):
-    # Escape the source code before wrapping in markdown
-    source = safe_html_escape(source)
     content = f"```{language}\n{source}\n```"
     return markdown(content, extensions=["fenced_code"])
 
@@ -69,8 +55,8 @@ def get_anki_model():
 
 def make_note(problem):
     print(f"📓 Producing note for problem: {problem.title}...")
-    tags = ";".join([safe_html_escape(t.name) for t in problem.tags])
-    tags_slug = ";".join([safe_html_escape(t.slug) for t in problem.tags])
+    tags = ";".join([t.name for t in problem.tags])
+    tags_slug = ";".join([t.slug for t in problem.tags])
 
     try:
         solution = problem.solution.get()
@@ -91,11 +77,11 @@ def make_note(problem):
     note = Note(
         model=get_anki_model(),
         fields=[
-            safe_html_escape(str(problem.display_id)),
-            safe_html_escape(problem.title),
-            safe_html_escape(problem.slug),
-            safe_html_escape(problem.level),
-            safe_html_escape(problem.description),
+            str(problem.display_id),
+            problem.title,
+            problem.slug,
+            problem.level,
+            problem.description,
             tags,
             tags_slug,
             markdown_to_html(solution.content) if solution else "",
