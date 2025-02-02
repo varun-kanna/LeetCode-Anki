@@ -73,7 +73,9 @@ class LeetCodeCrawler:
         self.session.cookies.update(cookies)
 
     def fetch_accepted_problems(self):
-        response = self.session.get("https://leetcode.com/api/problems/all/")
+        response = self.session.get(
+            "https://leetcode.com/api/problems/all/"
+        )  # gets all the problems from leetcode that are accepted by the account
         all_problems = json.loads(response.content.decode("utf-8"))
         # filter AC problems
         counter = 0
